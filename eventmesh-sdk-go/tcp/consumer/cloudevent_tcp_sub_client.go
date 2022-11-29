@@ -13,22 +13,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcp
+package consumer
 
 import (
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/common/protocol"
+	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/tcp"
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/tcp/conf"
 )
 
 type CloudEventTCPSubClient struct {
-	*BaseTCPClient
-}
-
-func NewCloudEventTCPSubClient(eventMeshTcpClientConfig conf.EventMeshTCPClientConfig) *CloudEventTCPSubClient {
-	return &CloudEventTCPSubClient{BaseTCPClient: NewBaseTCPClient(eventMeshTcpClientConfig)}
+	*tcp.BaseTCPClient
 }
 
 func (c CloudEventTCPSubClient) init() {
+	//TODO implement me
+	panic("implement me")
+}
+
+func NewCloudEventTCPSubClient(eventMeshTcpClientConfig conf.EventMeshTCPClientConfig) *CloudEventTCPSubClient {
+	return &CloudEventTCPSubClient{BaseTCPClient: tcp.NewBaseTCPClient(eventMeshTcpClientConfig)}
+}
+
+func (c CloudEventTCPSubClient) Init() {
 	//panic("implement me")
 }
 

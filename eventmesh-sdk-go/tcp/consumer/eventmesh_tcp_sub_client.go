@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcp
+package consumer
 
 import "github.com/apache/incubator-eventmesh/eventmesh-sdk-go/common/protocol"
 

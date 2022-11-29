@@ -13,23 +13,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcp
+package producer
 
 import (
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/common/protocol/tcp"
+	tcp2 "github.com/apache/incubator-eventmesh/eventmesh-sdk-go/tcp"
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/tcp/conf"
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/tcp/utils"
 )
 
 type CloudEventTCPPubClient struct {
-	*BaseTCPClient
-}
-
-func NewCloudEventTCPPubClient(eventMeshTcpClientConfig conf.EventMeshTCPClientConfig) *CloudEventTCPPubClient {
-	return &CloudEventTCPPubClient{BaseTCPClient: NewBaseTCPClient(eventMeshTcpClientConfig)}
+	*tcp2.BaseTCPClient
 }
 
 func (c CloudEventTCPPubClient) init() {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c CloudEventTCPPubClient) publish(message interface{}, timeout int64) tcp.Package {
+	//TODO implement me
+	panic("implement me")
+}
+
+func NewCloudEventTCPPubClient(eventMeshTcpClientConfig conf.EventMeshTCPClientConfig) *CloudEventTCPPubClient {
+	return &CloudEventTCPPubClient{BaseTCPClient: tcp2.NewBaseTCPClient(eventMeshTcpClientConfig)}
+}
+
+func (c CloudEventTCPPubClient) Init() {
 	c.Open()
 	c.Hello()
 	c.Heartbeat()
@@ -40,7 +51,7 @@ func (c CloudEventTCPPubClient) reconnect() {
 	c.Heartbeat()
 }
 
-func (c CloudEventTCPPubClient) publish(message interface{}, timeout int64) tcp.Package {
+func (c CloudEventTCPPubClient) Publish(message interface{}, timeout int64) tcp.Package {
 	msg := utils.BuildPackage(message, tcp.DefaultCommand.ASYNC_MESSAGE_TO_SERVER)
 	return c.IO(msg, timeout)
 }

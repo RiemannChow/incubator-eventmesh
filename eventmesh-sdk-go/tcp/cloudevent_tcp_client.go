@@ -18,33 +18,35 @@ package tcp
 import (
 	gtcp "github.com/apache/incubator-eventmesh/eventmesh-sdk-go/common/protocol/tcp"
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/tcp/conf"
+	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/tcp/consumer"
+	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/tcp/producer"
 )
 
 type CloudEventTCPClient struct {
-	cloudEventTCPPubClient *CloudEventTCPPubClient
-	cloudEventTCPSubClient *CloudEventTCPSubClient
+	cloudEventTCPPubClient *producer.CloudEventTCPPubClient
+	cloudEventTCPSubClient *consumer.CloudEventTCPSubClient
 }
 
 func NewCloudEventTCPClient(eventMeshTcpClientConfig conf.EventMeshTCPClientConfig) *CloudEventTCPClient {
 	return &CloudEventTCPClient{
-		cloudEventTCPPubClient: NewCloudEventTCPPubClient(eventMeshTcpClientConfig),
-		cloudEventTCPSubClient: NewCloudEventTCPSubClient(eventMeshTcpClientConfig),
+		cloudEventTCPPubClient: producer.NewCloudEventTCPPubClient(eventMeshTcpClientConfig),
+		cloudEventTCPSubClient: consumer.NewCloudEventTCPSubClient(eventMeshTcpClientConfig),
 	}
 }
 
 func (c *CloudEventTCPClient) Init() {
-	c.cloudEventTCPPubClient.init()
-	c.cloudEventTCPSubClient.init()
+	c.cloudEventTCPPubClient.Init()
+	c.cloudEventTCPSubClient.Init()
 }
 
 func (c *CloudEventTCPClient) Publish(message interface{}, timeout int64) gtcp.Package {
-	return c.cloudEventTCPPubClient.publish(message, timeout)
+	return c.cloudEventTCPPubClient.Publish(message, timeout)
 }
 
-func (c *CloudEventTCPClient) GetPubClient() EventMeshTCPPubClient {
+func (c *CloudEventTCPClient) GetPubClient() producer.EventMeshTCPPubClient {
 	return c.cloudEventTCPPubClient
 }
 
-func (c *CloudEventTCPClient) GetSubClient() EventMeshTCPSubClient {
+func (c *CloudEventTCPClient) GetSubClient() consumer.EventMeshTCPSubClient {
 	return c.cloudEventTCPSubClient
 }

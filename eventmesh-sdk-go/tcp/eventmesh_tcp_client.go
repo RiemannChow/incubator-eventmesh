@@ -15,11 +15,15 @@
 
 package tcp
 
-import gtcp "github.com/apache/incubator-eventmesh/eventmesh-sdk-go/common/protocol/tcp"
+import (
+	gtcp "github.com/apache/incubator-eventmesh/eventmesh-sdk-go/common/protocol/tcp"
+	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/tcp/consumer"
+	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/tcp/producer"
+)
 
 type EventMeshTCPClient interface {
 	Init()
 	Publish(msg interface{}, timeout int64) gtcp.Package
-	GetPubClient() EventMeshTCPPubClient
-	GetSubClient() EventMeshTCPSubClient
+	GetPubClient() producer.EventMeshTCPPubClient
+	GetSubClient() consumer.EventMeshTCPSubClient
 }
