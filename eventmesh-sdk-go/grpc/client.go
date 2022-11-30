@@ -21,6 +21,8 @@ import (
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/common/id"
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/common/seq"
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/grpc/conf"
+	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/grpc/consumer"
+	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/grpc/producer"
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/grpc/proto"
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/log"
 	"google.golang.org/grpc"
@@ -43,15 +45,17 @@ func New(cfg *conf.GRPCConfig, opts ...GRPCOption) (Interface, error) {
 type eventMeshGRPCClient struct {
 	grpcConn *grpc.ClientConn
 	// producer used to send msg to eventmesh
-	*eventMeshProducer
+	*producer.EventMeshProducer
 	// consumer used to subscribe msg from eventmesh
-	*eventMeshConsumer
+	*consumer.EventMeshConsumer
 	// cancel to close the client
 	cancel context.CancelFunc
 	// idg generate id api
 	idg id.Interface
 	// seqg generate uniq id
-	seqg seq.Interface
+	seqg              seq.Interface
+	eventMeshConsumer *consumer.EventMeshConsumer
+	eventMeshProducer *producer.EventMeshProducer
 }
 
 // newEventMeshGRPCClient create new grpc client
@@ -99,7 +103,7 @@ func newEventMeshGRPCClient(cfg *conf.GRPCConfig, opts ...GRPCOption) (*eventMes
 		return nil, err
 	}
 	grpConn = conn
-	producer, err := newProducer(grpConn)
+	producer, err := producer.NewProducer(grpConn)
 	if err != nil {
 		log.Warnf("failed to create producer, err:%v", err)
 		return nil, err
@@ -109,12 +113,12 @@ func newEventMeshGRPCClient(cfg *conf.GRPCConfig, opts ...GRPCOption) (*eventMes
 	cli.cancel = cancel
 	if cfg.ConsumerConfig.Enabled {
 		log.Infof("subscribe enabled")
-		consumer, err := newConsumer(ctx, cfg, grpConn, cli.idg, cli.seqg)
+		consumer, err := consumer.NewConsumer(ctx, cfg, grpConn, cli.idg, cli.seqg)
 		if err != nil {
 			log.Warnf("failed to create producer, err:%v", err)
 			return nil, err
 		}
-		if err := consumer.startConsumerStream(); err != nil {
+		if err := consumer.StartConsumerStream(); err != nil {
 			return nil, err
 		}
 		cli.eventMeshConsumer = consumer
@@ -185,7 +189,7 @@ func (e *eventMeshGRPCClient) Close() error {
 		e.eventMeshProducer = nil
 	}
 	if e.eventMeshConsumer != nil {
-		if err := e.eventMeshConsumer.close(); err != nil {
+		if err := e.eventMeshConsumer.Close(); err != nil {
 			log.Warnf("close consumer err:%v", err)
 		}
 		e.eventMeshConsumer = nil

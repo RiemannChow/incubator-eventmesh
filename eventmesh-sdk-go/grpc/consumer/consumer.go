@@ -13,13 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grpc
+package consumer
 
 import (
 	"context"
 	"fmt"
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/common/id"
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/common/seq"
+	grpc2 "github.com/apache/incubator-eventmesh/eventmesh-sdk-go/grpc"
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/grpc/conf"
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/grpc/proto"
 	"github.com/apache/incubator-eventmesh/eventmesh-sdk-go/log"
@@ -41,8 +42,8 @@ var (
 	defaultTTL = time.Second * 4
 )
 
-// eventMeshConsumer consumer to implements the ConsumerService
-type eventMeshConsumer struct {
+// EventMeshConsumer consumer to implements the ConsumerService
+type EventMeshConsumer struct {
 	// client subscribe api client
 	client proto.ConsumerServiceClient
 	// topics subscribe topics
@@ -51,10 +52,10 @@ type eventMeshConsumer struct {
 	// cfg configuration
 	cfg *conf.GRPCConfig
 	// dispatcher for topic
-	dispatcher *messageDispatcher
+	dispatcher *grpc2.MessageDispatcher
 	// heartbeat used to keepalive with eventmesh
-	heartbeat *eventMeshHeartbeat
-	// closeCtx close context
+	heartbeat *grpc2.EventMeshHeartbeat
+	// closeCtx Close context
 	closeCtx context.Context
 	// streamSubscribeChan chan to receive the subscribe request with stream type
 	streamSubscribeChan chan *proto.Subscription
@@ -64,29 +65,29 @@ type eventMeshConsumer struct {
 	seqg seq.Interface
 }
 
-// newConsumer create new consumer
-func newConsumer(ctx context.Context, cfg *conf.GRPCConfig, grpcConn *grpc.ClientConn, idg id.Interface, seqg seq.Interface) (*eventMeshConsumer, error) {
+// NewConsumer create new consumer
+func NewConsumer(ctx context.Context, cfg *conf.GRPCConfig, grpcConn *grpc.ClientConn, idg id.Interface, seqg seq.Interface) (*EventMeshConsumer, error) {
 	cli := proto.NewConsumerServiceClient(grpcConn)
-	heartbeat, err := newHeartbeat(ctx, cfg, grpcConn)
+	heartbeat, err := grpc2.NewHeartbeat(ctx, cfg, grpcConn)
 	if err != nil {
 		log.Warnf("failed to create producer, err:%v", err)
 		return nil, err
 	}
-	return &eventMeshConsumer{
+	return &EventMeshConsumer{
 		client:              cli,
 		closeCtx:            ctx,
 		topics:              new(sync.Map),
 		cfg:                 cfg,
 		heartbeat:           heartbeat,
-		dispatcher:          newMessageDispatcher(cfg.ConsumerConfig.PoolSize, cfg.ConsumerConfig.Timeout),
+		dispatcher:          grpc2.NewMessageDispatcher(cfg.ConsumerConfig.PoolSize, cfg.ConsumerConfig.Timeout),
 		streamSubscribeChan: make(chan *proto.Subscription, 1024),
 		idg:                 idg,
 		seqg:                seqg,
 	}, nil
 }
 
-// startConsumerStream run stream goroutine to receive the msg send by stream not webhook
-func (d *eventMeshConsumer) startConsumerStream() error {
+// StartConsumerStream run stream goroutine to receive the msg send by stream not webhook
+func (d *EventMeshConsumer) StartConsumerStream() error {
 	stream, err := d.client.SubscribeStream(d.closeCtx)
 	if err != nil {
 		log.Warnf("failed to get subscribe stream, err:%v", err)
@@ -120,7 +121,7 @@ func (d *eventMeshConsumer) startConsumerStream() error {
 				log.Warnf("receive msg got err:%v, need to return", err)
 				return
 			}
-			reply, err := d.dispatcher.onMessage(msg)
+			reply, err := d.dispatcher.OnMessage(msg)
 			if err != nil {
 				log.Warnf("dispatch msg got err:%v, msgID:%s", err, msg.UniqueId)
 				continue
@@ -144,7 +145,7 @@ func (d *eventMeshConsumer) startConsumerStream() error {
 	return nil
 }
 
-func (d *eventMeshConsumer) replyMsg(msg *proto.SimpleMessage, reply interface{}) error {
+func (d *EventMeshConsumer) replyMsg(msg *proto.SimpleMessage, reply interface{}) error {
 	replyContent := ""
 	typ := reflect.TypeOf(reply)
 	switch typ.Kind() {
@@ -161,7 +162,7 @@ func (d *eventMeshConsumer) replyMsg(msg *proto.SimpleMessage, reply interface{}
 		log.Warnf("un support response msg type:%v", typ.Kind())
 		return ErrUnSupportResponse
 	}
-	ttl := GetTTLWithDefault(msg, defaultTTL)
+	ttl := grpc2.GetTTLWithDefault(msg, defaultTTL)
 
 	var err error = nil
 	defer func() {
@@ -189,7 +190,7 @@ func (d *eventMeshConsumer) replyMsg(msg *proto.SimpleMessage, reply interface{}
 }
 
 // Subscribe topic for webhook
-func (d *eventMeshConsumer) Subscribe(item conf.SubscribeItem, callbackURL string) error {
+func (d *EventMeshConsumer) Subscribe(item conf.SubscribeItem, callbackURL string) error {
 	log.Infof("subscribe with webhook topic:%v, url:%s", item, callbackURL)
 	if callbackURL == "" {
 		return fmt.Errorf("webhook subscribe err, url is empty")
@@ -200,7 +201,7 @@ func (d *eventMeshConsumer) Subscribe(item conf.SubscribeItem, callbackURL strin
 		Type:  proto.Subscription_SubscriptionItem_SubscriptionType(item.SubscribeType),
 	}
 	subMsg := &proto.Subscription{
-		Header:            CreateHeader(d.cfg),
+		Header:            grpc2.CreateHeader(d.cfg),
 		ConsumerGroup:     d.cfg.ConsumerGroup,
 		SubscriptionItems: []*proto.Subscription_SubscriptionItem{subItem},
 		Url:               callbackURL,
@@ -210,21 +211,21 @@ func (d *eventMeshConsumer) Subscribe(item conf.SubscribeItem, callbackURL strin
 		log.Warnf("failed to subscribe topic:%v, err :%v", subItem, err)
 		return err
 	}
-	if resp.RespCode != Success {
+	if resp.RespCode != grpc2.Success {
 		log.Warnf("failed to subscribe resp:%v", resp.String())
 		return ErrSubscribeResponse
 	}
 	d.topics.Store(item.Topic, subItem)
-	d.heartbeat.addHeartbeat(subItem)
+	d.heartbeat.AddHeartbeat(subItem)
 	log.Infof("success subscribe with topic:%s, resp:%s", item.Topic, resp.String())
 	return nil
 }
 
 // UnSubscribe unsubscribe topic with all eventmesh server
-func (d *eventMeshConsumer) UnSubscribe() error {
+func (d *EventMeshConsumer) UnSubscribe() error {
 	log.Infof("unsubscribe topics")
 	resp, err := d.client.Unsubscribe(context.TODO(), &proto.Subscription{
-		Header:        CreateHeader(d.cfg),
+		Header:        grpc2.CreateHeader(d.cfg),
 		ConsumerGroup: d.cfg.ConsumerGroup,
 		SubscriptionItems: func() []*proto.Subscription_SubscriptionItem {
 			var sitems []*proto.Subscription_SubscriptionItem
@@ -245,7 +246,7 @@ func (d *eventMeshConsumer) UnSubscribe() error {
 }
 
 // SubscribeWithStream subscribe stream, dispatch the message for all topic
-func (d *eventMeshConsumer) SubscribeWithStream(item conf.SubscribeItem, handler OnMessage) error {
+func (d *EventMeshConsumer) SubscribeWithStream(item conf.SubscribeItem, handler grpc2.OnMessage) error {
 	log.Infof("subscribe stream topic:%v", item)
 	subItem := &proto.Subscription_SubscriptionItem{
 		Topic: item.Topic,
@@ -256,7 +257,7 @@ func (d *eventMeshConsumer) SubscribeWithStream(item conf.SubscribeItem, handler
 		return err
 	}
 	d.streamSubscribeChan <- &proto.Subscription{
-		Header:            CreateHeader(d.cfg),
+		Header:            grpc2.CreateHeader(d.cfg),
 		ConsumerGroup:     d.cfg.ConsumerGroup,
 		SubscriptionItems: []*proto.Subscription_SubscriptionItem{subItem},
 	}
@@ -265,24 +266,24 @@ func (d *eventMeshConsumer) SubscribeWithStream(item conf.SubscribeItem, handler
 	return nil
 }
 
-func (d *eventMeshConsumer) addSubscribeHandler(item conf.SubscribeItem, handler OnMessage) error {
+func (d *EventMeshConsumer) addSubscribeHandler(item conf.SubscribeItem, handler grpc2.OnMessage) error {
 	subItem := &proto.Subscription_SubscriptionItem{
 		Topic: item.Topic,
 		Mode:  proto.Subscription_SubscriptionItem_SubscriptionMode(item.SubscribeMode),
 		Type:  proto.Subscription_SubscriptionItem_SubscriptionType(item.SubscribeType),
 	}
-	if err := d.dispatcher.addHandler(item.Topic, handler); err != nil {
+	if err := d.dispatcher.AddHandler(item.Topic, handler); err != nil {
 		log.Warnf("failed to add handler for topic:%s", item.Topic)
 		return err
 	}
 	d.topics.Store(item.Topic, subItem)
-	d.heartbeat.addHeartbeat(subItem)
+	d.heartbeat.AddHeartbeat(subItem)
 	return nil
 }
 
-func (d *eventMeshConsumer) close() error {
+func (d *EventMeshConsumer) Close() error {
 	if d.heartbeat != nil {
-		if err := d.heartbeat.close(); err != nil {
+		if err := d.heartbeat.Close(); err != nil {
 			log.Warnf("failed to close heartbeat:%v", err)
 		}
 		d.heartbeat = nil
@@ -291,7 +292,7 @@ func (d *eventMeshConsumer) close() error {
 }
 
 // needToReply check the message need to reply, only works on RequestReply
-func (d *eventMeshConsumer) needToReply(topic string) bool {
+func (d *EventMeshConsumer) needToReply(topic string) bool {
 	val, ok := d.topics.Load(topic)
 	if !ok {
 		return false

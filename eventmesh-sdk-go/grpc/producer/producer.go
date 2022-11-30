@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grpc
+package producer
 
 import (
 	"context"
@@ -33,27 +33,27 @@ var (
 	LoadBalancerInput = "LoadBalancerInput"
 )
 
-// eventMeshProducer producer for eventmesh
-type eventMeshProducer struct {
+// EventMeshProducer producer for eventmesh
+type EventMeshProducer struct {
 	// client grpc producer client
 	client proto.PublisherServiceClient
 }
 
-// newProducer create new producer instance to send events
-func newProducer(grpcConn *grpc.ClientConn) (*eventMeshProducer, error) {
-	return &eventMeshProducer{
+// NewProducer create new producer instance to send events
+func NewProducer(grpcConn *grpc.ClientConn) (*EventMeshProducer, error) {
+	return &EventMeshProducer{
 		client: proto.NewPublisherServiceClient(grpcConn),
 	}, nil
 }
 
 // Close recover all resource hold in the producer
-func (e *eventMeshProducer) Close() error {
+func (e *EventMeshProducer) Close() error {
 	log.Infof("close eventmesh producer")
 	return nil
 }
 
 // Publish Async event publish
-func (e *eventMeshProducer) Publish(ctx context.Context, msg *proto.SimpleMessage, opts ...grpc.CallOption) (*proto.Response, error) {
+func (e *EventMeshProducer) Publish(ctx context.Context, msg *proto.SimpleMessage, opts ...grpc.CallOption) (*proto.Response, error) {
 	log.Infof("publish event:%v", msg.String())
 	resp, err := e.client.Publish(ctx, msg, opts...)
 	if err != nil {
@@ -66,7 +66,7 @@ func (e *eventMeshProducer) Publish(ctx context.Context, msg *proto.SimpleMessag
 }
 
 // RequestReply Sync event publish
-func (e *eventMeshProducer) RequestReply(ctx context.Context, msg *proto.SimpleMessage, opts ...grpc.CallOption) (*proto.SimpleMessage, error) {
+func (e *EventMeshProducer) RequestReply(ctx context.Context, msg *proto.SimpleMessage, opts ...grpc.CallOption) (*proto.SimpleMessage, error) {
 	log.Infof("request reply event:%v", msg.String())
 	resp, err := e.client.RequestReply(ctx, msg, opts...)
 	if err != nil {
@@ -79,7 +79,7 @@ func (e *eventMeshProducer) RequestReply(ctx context.Context, msg *proto.SimpleM
 }
 
 // BatchPublish Async batch event publish
-func (e *eventMeshProducer) BatchPublish(ctx context.Context, msg *proto.BatchMessage, opts ...grpc.CallOption) (*proto.Response, error) {
+func (e *EventMeshProducer) BatchPublish(ctx context.Context, msg *proto.BatchMessage, opts ...grpc.CallOption) (*proto.Response, error) {
 	log.Infof("request batch publish event:%v", msg.String())
 	resp, err := e.client.BatchPublish(ctx, msg, opts...)
 	if err != nil {

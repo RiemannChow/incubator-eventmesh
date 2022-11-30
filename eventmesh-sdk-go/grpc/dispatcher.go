@@ -64,9 +64,9 @@ func (p *pooledHandler) OnMessage(msg *proto.SimpleMessage) interface{} {
 	return nil
 }
 
-// messageDispatcher dispatch the message to different handler according to
+// MessageDispatcher dispatch the message to different handler according to
 // it's topic
-type messageDispatcher struct {
+type MessageDispatcher struct {
 	// topicMap key is the topic name, value is the SubscribeMessageHandler
 	topicMap *sync.Map
 	// poolSize concurrent for dispatch received msg
@@ -75,17 +75,17 @@ type messageDispatcher struct {
 	timeout time.Duration
 }
 
-// newMessageDispatcher create new message dispatcher
-func newMessageDispatcher(ps int, tm time.Duration) *messageDispatcher {
-	return &messageDispatcher{
+// NewMessageDispatcher create new message dispatcher
+func NewMessageDispatcher(ps int, tm time.Duration) *MessageDispatcher {
+	return &MessageDispatcher{
 		topicMap: new(sync.Map),
 		poolsize: ps,
 		timeout:  tm,
 	}
 }
 
-// addHandler add msg handler
-func (m *messageDispatcher) addHandler(topic string, hdl OnMessage) error {
+// AddHandler add msg handler
+func (m *MessageDispatcher) AddHandler(topic string, hdl OnMessage) error {
 	_, ok := m.topicMap.Load(topic)
 	if ok {
 		return ErrTopicDispatcherExist
@@ -105,7 +105,7 @@ func (m *messageDispatcher) addHandler(topic string, hdl OnMessage) error {
 }
 
 // OnMessage dispatch the message by topic
-func (m *messageDispatcher) onMessage(msg *proto.SimpleMessage) (interface{}, error) {
+func (m *MessageDispatcher) OnMessage(msg *proto.SimpleMessage) (interface{}, error) {
 	// subscribe response ignore it
 	if msg.Topic == "" {
 		return nil, nil

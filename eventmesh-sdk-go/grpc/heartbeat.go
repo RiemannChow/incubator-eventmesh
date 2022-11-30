@@ -31,8 +31,8 @@ var (
 	ErrHeartbeatResp = fmt.Errorf("heartbeat response err")
 )
 
-// eventMeshHeartbeat heartbeat to keep the client conn
-type eventMeshHeartbeat struct {
+// EventMeshHeartbeat heartbeat to keep the client conn
+type EventMeshHeartbeat struct {
 	// clientsMap hold all grp client to send heartbeat msg
 	client proto.HeartbeatServiceClient
 	// cfg the configuration for grpc client
@@ -45,11 +45,11 @@ type eventMeshHeartbeat struct {
 	subscribeItemsLock *sync.RWMutex
 }
 
-// newHeartbeat create heartbeat service, and start a goroutine
+// NewHeartbeat create heartbeat service, and start a goroutine
 // with all eventmesh server
-func newHeartbeat(ctx context.Context, cfg *conf.GRPCConfig, grpcConn *grpc.ClientConn) (*eventMeshHeartbeat, error) {
+func NewHeartbeat(ctx context.Context, cfg *conf.GRPCConfig, grpcConn *grpc.ClientConn) (*EventMeshHeartbeat, error) {
 	cli := proto.NewHeartbeatServiceClient(grpcConn)
-	heartbeat := &eventMeshHeartbeat{
+	heartbeat := &EventMeshHeartbeat{
 		client:             cli,
 		cfg:                cfg,
 		closeCtx:           ctx,
@@ -60,7 +60,7 @@ func newHeartbeat(ctx context.Context, cfg *conf.GRPCConfig, grpcConn *grpc.Clie
 }
 
 // run the ticker to send heartbeat msg
-func (e *eventMeshHeartbeat) run() {
+func (e *EventMeshHeartbeat) run() {
 	log.Infof("start heartbeat goroutine")
 	tick := time.NewTicker(e.cfg.Period)
 	for {
@@ -75,7 +75,7 @@ func (e *eventMeshHeartbeat) run() {
 }
 
 // sendMsg send heartbeat msg to eventmesh server
-func (e *eventMeshHeartbeat) sendMsg(cli proto.HeartbeatServiceClient) error {
+func (e *EventMeshHeartbeat) sendMsg(cli proto.HeartbeatServiceClient) error {
 	log.Debugf("send heartbeat msg to server:%s")
 	cancelCtx, cancel := context.WithTimeout(e.closeCtx, e.cfg.HeartbeatConfig.Timeout)
 	defer cancel()
@@ -108,15 +108,15 @@ func (e *eventMeshHeartbeat) sendMsg(cli proto.HeartbeatServiceClient) error {
 	return nil
 }
 
-// addHeartbeat add heartbeat for topic
-func (e *eventMeshHeartbeat) addHeartbeat(item *proto.Subscription_SubscriptionItem) {
+// AddHeartbeat add heartbeat for topic
+func (e *EventMeshHeartbeat) AddHeartbeat(item *proto.Subscription_SubscriptionItem) {
 	e.subscribeItemsLock.Lock()
 	defer e.subscribeItemsLock.Unlock()
 	e.subscribeItems = append(e.subscribeItems, item)
 }
 
 // removeHeartbeat remove heartbeat for topic
-func (e *eventMeshHeartbeat) removeHeartbeat(item *proto.Subscription_SubscriptionItem) {
+func (e *EventMeshHeartbeat) removeHeartbeat(item *proto.Subscription_SubscriptionItem) {
 	e.subscribeItemsLock.Lock()
 	defer e.subscribeItemsLock.Unlock()
 	var newSubscribeItems []*proto.Subscription_SubscriptionItem
@@ -129,8 +129,8 @@ func (e *eventMeshHeartbeat) removeHeartbeat(item *proto.Subscription_Subscripti
 	e.subscribeItems = newSubscribeItems
 }
 
-// close free the heartbeat resources
-func (e *eventMeshHeartbeat) close() error {
+// Close free the heartbeat resources
+func (e *EventMeshHeartbeat) Close() error {
 	log.Infof("close heartbeat")
 	return nil
 }

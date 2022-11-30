@@ -55,11 +55,11 @@ func Test_messageDispatcher_addHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &messageDispatcher{
+			m := &MessageDispatcher{
 				topicMap: tt.fields.topicMap,
 				poolsize: tt.fields.poolsize,
 			}
-			tt.wantErr(t, m.addHandler(tt.args.topic, tt.args.hdl), fmt.Sprintf("addHandler(%v, %v)", tt.args.topic, tt.args.hdl))
+			tt.wantErr(t, m.AddHandler(tt.args.topic, tt.args.hdl), fmt.Sprintf("addHandler(%v, %v)", tt.args.topic, tt.args.hdl))
 		})
 	}
 }
